@@ -2,6 +2,7 @@
 a helper header help you easy to program gui app on wxWidgets 3.x
 
 you can easily write menus like this
+```
 Frame* frame = new Frame;
 menu::begin(new MenuBar)
     ("File", 
@@ -18,8 +19,10 @@ menu::begin(new MenuBar)
      (menu::end,   [=] (MenuBar* mb) {
                                       frame->SetMenuBar(mb);
                                 });
+```
 
 you can easily write windows like this as well:
+```
 Frame* frame = new Frame;
 layout::begin(new layout)
     (layout::begin(new layout)
@@ -41,3 +44,4 @@ layout::begin(new layout)
     (layout::end, [=] (layout& layout) {
                                 frame->SetLayout(layout);
                             });
+```
