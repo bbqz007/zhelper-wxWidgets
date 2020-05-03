@@ -45,3 +45,20 @@ layout::begin(new layout)
                                 frame->SetLayout(layout);
                             });
 ```
+just easy like writing a html
+```
+<div id='0'>
+    <div id='1'>
+        <input type="button" onclick="handler()">
+    </div>
+    <div id='2'>
+        <input type="button" onclick="handler()">
+    </div>
+    <div id='3'>
+        <input type="button" onclick="handler()">
+    </div>
+    <div id='4'>
+        <input type="button" onclick="handler()">
+    </div>
+</div>
+```
