@@ -3,9 +3,15 @@
 ```
   (element)
     [prop]
-    [onclick, <void(event&)>]
+    [onclick = <void(event&)>]
 ```
 2. you can use \[onclick, <void(event&)>] instead of \[onclick = <void(event&)>]. 
+```
+  (element1)
+     [onclick, <void(event&)>]
+  (element2)
+     [onclick = <void(event&)>]
+```
 3. fix bug
 ```
   operator ()(T1&) [ i = 1 ] operator ()(T2&) [ i = 2 ]
