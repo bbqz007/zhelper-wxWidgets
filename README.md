@@ -4,20 +4,25 @@ a helper header help you easy to program gui app on wxWidgets 3.x
 you can easily write menus like this
 ```
 Frame* frame = new Frame;
+Delegate* delegate = new Delegate(frame);
 menu::begin(new MenuBar)
     ("File", 
          menu::begin(new Menu)
-　　　　　　　　　　　(ID_OPEN, "open")
-                        [onclick = [=] (event&) {  }]
-                    (ID_NEW,   "new")  
-                        [onclick, [=] (event&) {  }]
-                    (menu::end)
+            (ID_OPEN, "open")
+                [onclick = [=] (event& e) {
+                    delegate->handle(e);
+                }]
+            (ID_NEW,  "new")  
+                [onclick, [=] (event& e) {
+                    delegate->handle(e);
+                }]
+            (menu::end)
      )
      ("About",
           menu::begin(new Menu)
-　　　　　　　　　　　　　(ID_HELP,   "help")
-                            [onclick, [=] (event&)  {   }]
-                     (menu::end)
+            (ID_HELP,   "help")
+                [onclick, [=] (event&)  {   }]
+            (menu::end)
      )
      (menu::end,   
         [=] (MenuBar* mb) {
