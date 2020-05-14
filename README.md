@@ -16,14 +16,12 @@ menu::begin(new MenuBar)
                 [onclick, [=] (event& e) {
                     delegate->handle(e);
                 }]
-            (menu::end)
-     )
+            (menu::end))
      ("About",
           menu::begin(new Menu)
             (ID_HELP,   "help")
                 [onclick, [=] (event&)  {   }]
-            (menu::end)
-     )
+            (menu::end))
      (menu::end,   
         [=] (MenuBar* mb) {
             frame->SetMenuBar(mb);
@@ -43,23 +41,23 @@ layout::begin(new layout)
         (new button) 
             [layout_flags]
             [ onclick = [] (event&) {} ]
-        (layout::end)
-    )
+        (layout::end))
+    (layout::begin(new layout)
+        [layout_flags]
+        (new textctrl)
+            [layout_flags]
+        (new button) 
+            [layout_flags]
+            [ onclick = [] (event&) {} ]
+        (layout::end))
     (layout::begin(new layout)
         (new button) 
             [ onclick = [] (event&) {} ]
-        (layout::end)
-    )
+        (layout::end))
     (layout::begin(new layout)
         (new button) 
             [ onclick = [] (event&) {} ]
-        (layout::end)
-    )
-    (layout::begin(new layout)
-        (new button) 
-            [ onclick = [] (event&) {} ]
-        (layout::end)
-    )
+        (layout::end))
     (layout::end, 
      layout::oncomplete = [=] (layout& layout) {
          frame->SetLayout(layout);
