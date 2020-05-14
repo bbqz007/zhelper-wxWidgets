@@ -80,11 +80,20 @@ bool MyApp::OnInit()
                 ("&File",
                  menu::begin(new wxMenu)
                     (LAYOUT_TEST_PROPORTIONS, "&Proportions demo...\tF1", &MyFrame::TestMenuCommand, frame)
-                    (LAYOUT_TEST_SIZER, "Test wx&FlexSizer...\tF2", &MyFrame::TestMenuCommand, frame)
-                    (LAYOUT_TEST_NB_SIZER, "Test &notebook sizers...\tF3", &MyFrame::TestMenuCommand, frame)
+                    (LAYOUT_TEST_SIZER, "Test wx&FlexSizer...\tF2")     
+                        [onclick = [=](wxCommandEvent& e) {
+                            frame->TestMenuCommand(e);
+                        }]
+                    (LAYOUT_TEST_NB_SIZER, "Test &notebook sizers...\tF3")  
+                        [onclick, [=](wxCommandEvent& e) {
+                            frame->TestMenuCommand(e);
+                        }]
                     (LAYOUT_TEST_GB_SIZER, "Test &gridbag sizer...\tF4", frame, [=](wxCommandEvent& event) { frame->TestMenuCommand(event); })
                     (LAYOUT_TEST_SET_MINIMAL, "Test Set&ItemMinSize...\tF5")
                     (LAYOUT_TEST_NESTED, "Test nested sizer in a wxPanel...\tF6", frame, [=](wxCommandEvent& event) { sptr_delegate->TestMenuCommand(event); })(LAYOUT_TEST_WRAP, "Test wrap sizers...\tF7")
+                        [onclick, [=](wxCommandEvent& e) {
+                            sptr_delegate->TestMenuCommand(e);
+                        }]
                     (menu::end))
                 ("&Help",
                  menu::begin(new wxMenu)
@@ -110,53 +119,65 @@ bool MyApp::OnInit()
     
     layout::begin(new wxBoxSizer(wxVERTICAL))
     // 1) top: create wxStaticText with minimum size equal to its default size
-        (new wxStaticText( p, wxID_ANY, "An explanation (wxALIGN_RIGHT)." ),
-        wxSizerFlags().Align(wxALIGN_RIGHT).Border(wxALL & ~wxBOTTOM, 5))
-        (new wxStaticText( p, wxID_ANY, "An explanation (wxALIGN_LEFT)." ),
-        wxSizerFlags().Align(wxALIGN_LEFT).Border(wxALL & ~wxBOTTOM, 5))
-        (new wxStaticText( p, wxID_ANY, "An explanation (wxALIGN_CENTRE_HORIZONTAL)." ),
-        wxSizerFlags().Align(wxALIGN_CENTRE_HORIZONTAL).Border(wxALL & ~wxBOTTOM, 5))
+        (new wxStaticText( p, wxID_ANY, "An explanation (wxALIGN_RIGHT)." ))
+            [wxSizerFlags().Align(wxALIGN_RIGHT).Border(wxALL & ~wxBOTTOM, 5)]
+        (new wxStaticText( p, wxID_ANY, "An explanation (wxALIGN_LEFT)." ))
+            [wxSizerFlags().Align(wxALIGN_LEFT).Border(wxALL & ~wxBOTTOM, 5)]
+        (new wxStaticText( p, wxID_ANY, "An explanation (wxALIGN_CENTRE_HORIZONTAL)." ))
+            [wxSizerFlags().Align(wxALIGN_CENTRE_HORIZONTAL).Border(wxALL & ~wxBOTTOM, 5)]
 
     // 2) top: create wxTextCtrl with minimum size (100x60)
-        (new wxTextCtrl( p, wxID_ANY, "My text (wxEXPAND).", wxDefaultPosition, wxSize(100,60), wxTE_MULTILINE),
-        wxSizerFlags(1).Expand().Border(wxALL, 5))
+        (new wxTextCtrl( p, wxID_ANY, "My text (wxEXPAND).\n Try to drag and drop a file on me.", wxDefaultPosition, wxSize(100,60), wxTE_MULTILINE))
+            [wxSizerFlags(1).Expand().Border(wxALL, 5)]
+            [ondropfiles = [=](wxDropFilesEvent& e) {
+                int count = e.GetNumberOfFiles();
+                if (!count)
+                    return;
+                wxString* filenames = e.GetFiles();
+                wxMessageBox(filenames[0], "drag and drop");
+            }]
 
     // 2.5) Gratuitous test of wxStaticBoxSizers
         (layout::begin(new wxStaticBoxSizer(new wxStaticBox(p, wxID_ANY, "A wxStaticBoxSizer"), wxVERTICAL))
-            (new wxStaticText(p, wxID_ANY, "And some TEXT inside it"), wxSizerFlags().Border(wxALL, 30))
-            (layout::end), wxSizerFlags(1).Expand().Border(wxALL, 10))
+            [wxSizerFlags(1).Expand().Border(wxALL, 10)]
+            (new wxStaticText(p, wxID_ANY, "And some TEXT inside it"))
+                [wxSizerFlags().Border(wxALL, 30)]
+            (layout::end))
 
     // 2.7) And a test of wxGridSizer
         (layout::begin(new wxGridSizer(2, 5, 5))
-                (new wxStaticText(p, wxID_ANY, "Label"),
-                wxSizerFlags().Align(wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL))
-                (new wxTextCtrl(p, wxID_ANY, "Grid sizer demo"),
-                wxSizerFlags(1).Align(wxGROW | wxALIGN_CENTER_VERTICAL))
-                (new wxStaticText(p, wxID_ANY, "Another label"),
-                wxSizerFlags().Align(wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL))
-                (new wxTextCtrl(p, wxID_ANY, "More text"),
-                wxSizerFlags(1).Align(wxGROW | wxALIGN_CENTER_VERTICAL))
-                (new wxStaticText(p, wxID_ANY, "Final label"),
-                wxSizerFlags().Align(wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL))
-                (new wxTextCtrl(p, wxID_ANY, "And yet more text"),
-                wxSizerFlags().Align(wxGROW | wxALIGN_CENTER_VERTICAL))
-                (layout::end), wxSizerFlags().Proportion(1).Expand().Border(wxALL, 10))
+                [wxSizerFlags().Proportion(1).Expand().Border(wxALL, 10)]
+                (new wxStaticText(p, wxID_ANY, "Label"))
+                    [wxSizerFlags().Align(wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL)]
+                (new wxTextCtrl(p, wxID_ANY, "Grid sizer demo"))
+                    [wxSizerFlags(1).Align(wxGROW | wxALIGN_CENTER_VERTICAL)]
+                (new wxStaticText(p, wxID_ANY, "Another label"))
+                    [wxSizerFlags().Align(wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL)]
+                (new wxTextCtrl(p, wxID_ANY, "More text"))
+                    [wxSizerFlags(1).Align(wxGROW | wxALIGN_CENTER_VERTICAL)]
+                (new wxStaticText(p, wxID_ANY, "Final label"))
+                    [wxSizerFlags().Align(wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL)]
+                (new wxTextCtrl(p, wxID_ANY, "And yet more text"))
+                    [wxSizerFlags().Align(wxGROW | wxALIGN_CENTER_VERTICAL)]
+                (layout::end))
 
 
 #if wxUSE_STATLINE
     // 3) middle: create wxStaticLine with minimum size (3x3)
-        (new wxStaticLine( p, wxID_ANY, wxDefaultPosition, wxSize(3,3), wxHORIZONTAL),
-            wxSizerFlags().Expand())
+        (new wxStaticLine( p, wxID_ANY, wxDefaultPosition, wxSize(3,3), wxHORIZONTAL))
+            [wxSizerFlags().Expand()]
 #endif // wxUSE_STATLINE
 
 
     // 4) bottom: create two centred wxButtons
         (layout::begin(new wxBoxSizer( wxHORIZONTAL ))
-            (new wxButton( p, wxID_ANY, "Two buttons in a box" ),
-            wxSizerFlags().Border(wxALL, 7))[onclick = [=](wxCommandEvent& e) { delegate->OnClick(e); } ]
-            (new wxButton( p, wxID_ANY, "(wxCENTER)" ),
-            wxSizerFlags().Border(wxALL, 7))
-            (layout::end), wxSizerFlags().Center())
+            [wxSizerFlags().Center()]
+            (new wxButton( p, wxID_ANY, "Two buttons in a box" ))
+                [wxSizerFlags().Border(wxALL, 7)]
+                [onclick = [=](wxCommandEvent& e) { delegate->OnClick(e); } ]
+            (new wxButton( p, wxID_ANY, "(wxCENTER)" ))
+                [wxSizerFlags().Border(wxALL, 7)]
+            (layout::end))
         (layout::end, 
             [=](wxSizer* s) { 
                 p->SetSizer(s); 
