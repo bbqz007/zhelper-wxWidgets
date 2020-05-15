@@ -105,3 +105,42 @@ layout::begin(somelayout)   // begin to write a layout
         [onchar = ...]      // configure onchar function associated with new element
     (layout::end)           // end up writing a layout
 ```
+
+new features for programming with wxListCtrl
+
+you do not need to fill things into item then insert and lots of code, 
+
+you do not need to know about the interfaces of wxListCtrl.
+
+you just need to write () and \[ ].
+
+1. easy way to write wxListCtrl headers (columns)
+```
+wxListCtrl* p = new wxListCtrl;
+using namespace zhelper::wxWidgets::listctrlhlp;
+column::begin(p)
+  ("col 1") [ font ] [ color ]
+  ("col 2") [ font ] [ color ]
+  (column::end)
+```
+
+2. easy way to append rows into wxListCtrl
+```
+row::begin(p)
+  ("row 1_col 1") [ font ] [ color ]
+  ("row 1_col 2") [ font ] [ color ]
+  (row::another)
+  ("row 2_col 1") [ font ] [ color ]
+  ("row 2_col 2") [ font ] [ color ]
+  (row::end)
+```
+
+3. easy way to modify cell of wxListCtrl
+```
+cell::begin(p)
+  (1, 1)    // row 2 , col 2
+    [ "change value" ] [ change_font ] [ change_color ]
+  (0, 1)    // row 1 , col 2
+    [ "change value" ] [ change_font ] [ change_color ]
+   (cell:end)
+```
