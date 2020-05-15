@@ -60,6 +60,7 @@ typedef onevent<wxKeyEvent, 'kyup'>  Fonkeyup; Fonkeyup onkeyup;
 typedef onevent<wxKeyEvent, 'kydn'>  Fonkeydown; Fonkeydown onkeydown;
 typedef onevent<wxCommandEvent, 'clck'> Fonclick; Fonclick onclick;
 typedef onevent<wxDropFilesEvent, 'drpf'> Fondropfiles; Fondropfiles ondropfiles;
+typedef onevent<wxCommandEvent, 'choc'> Fonchoice; Fonchoice onchoice;
 #pragma GCC diagnostic pop
 
 
@@ -78,11 +79,18 @@ public:
     virtual void operator ()(wxSizerFlags) = 0;
     virtual void operator ()(wxSizer*) = 0;
     virtual void operator ()(long) = 0;
+    //
+    virtual void operator ()(const wxPoint&) = 0;
+    virtual void operator ()(const wxSize&) = 0;
+    // wxTextEntry
+    virtual void operator ()(const wxArrayString&) = 0;
+    virtual void operator ()(const wxString&) = 0;
     // wxWindoow
     virtual void operator ()(const Fonkeyup&) = 0;
     virtual void operator ()(const Fonkeydown&) = 0;
     virtual void operator ()(const Fonclick&) = 0;
     virtual void operator ()(const Fondropfiles&) = 0;
+    virtual void operator ()(const Fonchoice&) = 0;
     // wxSizer
     wxSizerFlags sf_;
     bool deferred_;
@@ -100,6 +108,11 @@ public:
     NO_IMPL(const Fonkeydown&)
     NO_IMPL(const Fonclick&)
     NO_IMPL(const Fondropfiles&)
+    NO_IMPL(const Fonchoice&)
+    NO_IMPL(const wxArrayString&)
+    NO_IMPL(const wxString&)
+    NO_IMPL(const wxPoint&)
+    NO_IMPL(const wxSize&)
 };
 
 template<class T>
@@ -124,6 +137,23 @@ public:
     virtual void operator ()(const Fonkeydown& f)
     {
         t_->Bind(wxEVT_KEY_DOWN, f.functor_);
+    }
+    virtual void operator ()(const wxString& value)
+    {
+        wxTextEntry* te = NULL;
+        wxWindow* win = NULL;
+        if (te = dynamic_cast<wxTextEntry*>(t_))
+            te->SetValue(value);
+        else if (win = dynamic_cast<wxWindow*>(t_))
+            win->SetLabel(value);
+    }
+    virtual void operator ()(const wxPoint& pos)
+    {
+        t_->SetPosition(pos);
+    }
+    virtual void operator ()(const wxSize& size)
+    {
+        t_->SetMinSize(size);
     }
     T* t_;
 };
@@ -180,6 +210,21 @@ public:
     }
 };
 
+template<>
+class prop_builder<wxChoice> : public prop_builder_base<wxChoice>
+{
+public:
+    prop_builder(wxChoice* t) : prop_builder_base<wxChoice>(t) {}
+    virtual void operator ()(const Fonchoice& f)
+    {
+        t_->Bind(wxEVT_CHOICE, f.functor_);
+    }
+    virtual void operator ()(const wxArrayString& items)
+    {
+        t_->Set(items);
+    }
+};
+
 #define DELCARE_SIZER_PROP_BUILDER(T) \
 template<>  \
 class prop_builder<T> : public prop_builder_base<wxSizer> \
@@ -230,6 +275,12 @@ public:
         return *this;
     }
 
+    builder& operator [] (const wxArrayString& items)
+    {
+        (*prop_)(items);
+        return *this;
+    }
+
     builder& operator [] (const Fonclick& f)
     {
         (*prop_)(f);
@@ -237,6 +288,13 @@ public:
     }
 
     builder& operator [] (const Fondropfiles& f)
+    {
+        (*prop_)(f);
+        return *this;
+    }
+
+    template<typename Functor>
+    builder& operator [] (const Functor& f)
     {
         (*prop_)(f);
         return *this;
@@ -470,6 +528,282 @@ public:
 };
 layout_end layout::end;
 std::function<void(wxSizer*)> layout::oncomplete;
+
+#define EMPTY_ARGS wxEmptyString, wxDefaultPosition, wxDefaultSize
+
+namespace listctlhlp
+{
+
+class cell;
+class row;
+class column;
+
+class cell_builder;
+class row_builder;
+class column_builder;
+
+class cell_end {};
+class cell_another {};
+class row_end {};
+class row_another {};
+class column_end {};
+
+class cell_builder
+{
+public:
+    explicit cell_builder(wxListCtrl* ctrl, bool modify = false)
+        : ctrl_(ctrl), col_(0), row_(0), modify_(modify), inuse_(false)
+    {
+    }
+    cell_builder& operator ()(int row, int col)
+    {
+        modify_if_needed();
+        inuse_ = true;
+        row_ = row;
+        col_ = col;
+        info_.Clear();
+        info_.SetId(row_);
+        info_.SetColumn(col_);
+        if (ctrl_)
+            ctrl_->GetItem(info_);
+        return *this;
+    }
+    cell_builder& operator [](const wxString& txt)
+    {
+        info_.SetText(txt);
+        return *this;
+    }
+    cell_builder& operator [](const char* txt)
+    {
+        info_.SetText(wxString(txt));
+        return *this;
+    }
+    cell_builder& operator [](const wxColour& color)
+    {
+        info_.SetTextColour(color);
+        return *this;
+    }
+    cell_builder& operator [](const wxFont& font)
+    {
+        info_.SetFont(font);
+        return *this;
+    }
+    cell_builder& operator [](const int width)
+    {
+        info_.SetWidth(width);
+        return *this;
+    }
+    wxListItem operator ()(cell_end&)
+    {
+        wxListItem ret = info_;
+        delete this;
+        return ret;
+    }
+    wxListItem operator ()(cell_another&)
+    {
+        wxListItem ret = info_;
+        info_.Clear();
+        return ret;
+    }
+private:
+    void modify_if_needed()
+    {
+        if (!modify_ || !inuse_ || !ctrl_)
+            return;
+
+        ctrl_->SetItem(info_);
+    }
+    bool inuse_;
+    bool modify_;
+    int row_;
+    int col_;
+    wxListItem info_;
+    wxListCtrl* ctrl_;
+};
+
+class cell
+{
+public:
+    static cell_end end;
+    static cell_another another;
+    static cell_builder& begin(wxListCtrl* ctrl) { return *new cell_builder(ctrl, true); }
+    static cell_builder& begin() { return *new cell_builder(NULL); }
+};
+cell_end cell::end;
+cell_another cell::another;
+
+class column_builder
+{
+public:
+    column_builder(wxListCtrl* ctrl) : ctrl_(ctrl), col_(0) {}
+    column_builder& operator ()(wxListItem* info)
+    {
+        finish_prev_cell();
+        cell_.reset();
+        ctrl_->InsertColumn(col_++, *info);
+        return *this;
+    }
+    column_builder& operator ()(wxListItem info)
+    {
+        return operator ()(&info);
+    }
+    column_builder& operator ()(const wxString& txt)
+    {
+        finish_prev_cell();
+        if (!cell_)
+            cell_.reset(&cell::begin());
+        (*cell_)[txt];
+        //ctrl_->InsertColumn(col_++, txt);
+        return *this;
+    }
+    column_builder& operator [](const wxColour& color)
+    {
+        if (cell_)
+            (*cell_)[color];
+        return *this;
+    }
+    column_builder& operator [](const wxFont& font)
+    {
+        if (cell_)
+            (*cell_)[font];
+        return *this;
+    }
+    column_builder& operator [](const int width)
+    {
+        if (cell_)
+            (*cell_)[width];
+        return *this;
+    }
+    wxListCtrl* operator ()(column_end&)
+    {
+        finish_prev_cell();
+        wxListCtrl* ret = ctrl_;
+        delete this;
+        return ret;
+    }
+private:
+    void finish_prev_cell();
+
+    int col_;
+    wxListCtrl* ctrl_;
+    wxSharedPtr<cell_builder> cell_;
+};
+class column
+{
+public:
+    static column_end end;
+    static column_builder& begin(wxListCtrl* ctrl) { return *new column_builder(ctrl); }
+};
+column_end column::end;
+
+class row_builder
+{
+public:
+    row_builder(wxListCtrl* ctrl) : ctrl_(ctrl), col_(0)
+    {
+        row_ = ctrl->GetItemCount();
+    }
+    row_builder& operator ()(wxListItem* info)
+    {
+        finish_prev_cell();
+        cell_.reset();
+
+        info->SetColumn(col_++);
+        info->SetId(row_);
+        if (col_ == 0)
+            row_ = ctrl_->InsertItem(*info);
+        else
+            ctrl_->SetItem(*info);
+        return *this;
+    }
+    row_builder& operator ()(wxListItem info)
+    {
+        return operator ()(&info);
+    }
+    row_builder& operator ()(const wxString& txt)
+    {
+        finish_prev_cell();
+        if (col_ == 0)
+            row_ = ctrl_->InsertItem(row_, txt);
+        //else
+            //ctrl_->SetItem(row_, col_, txt);
+        if (!cell_)
+            cell_.reset(&cell::begin());
+
+        cell_->operator ()(row_, col_++);
+        (*cell_)[txt];
+        //++col_;
+        return *this;
+    }
+    row_builder& operator [](const wxColour& color)
+    {
+        if (cell_)
+            (*cell_)[color];
+        return *this;
+    }
+    row_builder& operator [](const wxFont& font)
+    {
+        if (cell_)
+            (*cell_)[font];
+        return *this;
+    }
+    row_builder& operator [](const int width)
+    {
+        if (cell_)
+            (*cell_)[width];
+        return *this;
+    }
+    wxListCtrl* operator ()(row_end&)
+    {
+        finish_prev_cell();
+        wxListCtrl* ret = ctrl_;
+        delete this;
+        return ret;
+    }
+    row_builder& operator ()(row_another&)
+    {
+        finish_prev_cell();
+        cell_.reset();
+        row_++;
+        col_ = 0;
+        return *this;
+    }
+private:
+    void finish_prev_cell();
+
+    int row_;
+    int col_;
+    wxListCtrl* ctrl_;
+    wxSharedPtr<cell_builder> cell_;
+};
+class row
+{
+public:
+    static row_end end;
+    static row_another another;
+    static row_builder& begin(wxListCtrl* ctrl) { return *new row_builder(ctrl); }
+};
+row_end row::end;
+row_another row::another;
+
+void column_builder::finish_prev_cell()
+{
+    if (!cell_)
+        return;
+
+    ctrl_->InsertColumn(col_++, cell_->operator ()(cell::another));
+}
+
+void row_builder::finish_prev_cell()
+{
+    if (!cell_)
+        return;
+    wxListItem info = cell_->operator ()(cell::another);
+    ctrl_->SetItem(info);
+}
+
+
+}
 
 } // end namespace wxWidgets
 
