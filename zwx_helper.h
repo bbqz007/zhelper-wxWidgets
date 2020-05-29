@@ -23,7 +23,9 @@ SOFTWARE.
 */
 
 #ifndef ZWX_HELPER__H_
+#define ZWX_HELPER__H_
 #include <functional>
+#include <tuple>
 #include <memory>
 
 namespace zhelper
@@ -54,16 +56,132 @@ public:
     std::function<void(T&)> functor_;
 };
 
+class lambda_transfer
+{
+public:
+    // thanks to a solution of deduce types of arguments and result of lambda to make std::function
+    //   by https://stackoverflow.com/questions/21245891/deduce-template-argument-when-lambda-passed-in-as-a-parameter
+    template<typename F>
+    auto operator , (const F& f)
+    {
+        return operator ()(f, &F::operator());
+    }
+private:
+    template<typename F, typename T>
+    std::function<void(T*)> operator () (const F& f, void(F::*)(T*) const)
+    {
+        return std::function<void(T*)>(f);
+    }
+    template<typename F, typename ... Args>
+    std::function<void(Args...)> operator () (const F& f, void(F::*)(Args...) const)
+    {
+        return std::function<void(Args...)>(f);
+    }
+};
+
+class multievent_begin;
+template<typename ... Types>
+class multievent
+{
+public:
+    multievent(Types... types)
+    {
+        tpl_ = std::make_tuple(types...);
+    }
+    multievent(const std::tuple<Types...>& tpl)
+        : tpl_(tpl)
+    {
+
+    }
+    template<typename T>
+    multievent<Types..., T> operator , (const T& t)
+    {
+        traversal_assign(t.functor_);
+        auto tpl = std::tuple_cat(tpl_, std::make_tuple(t));
+        return multievent<Types..., T>(tpl);
+    }
+    template<size_t N, typename Tp, typename F>
+    struct traversal_assign_act
+    {
+        static void act(Tp& tpl_, const F& f)
+        {
+            std::get<N>(tpl_).functor_ = f;
+            traversal_assign_act<N-1, Tp, F>::act(tpl_, f);
+        }
+    };
+    template<typename Tp, typename F>
+    struct traversal_assign_act<0, Tp, F>
+    {
+        static void act(Tp&, const F& f)
+        {
+
+        }
+    };
+    template<typename T>
+    void traversal_assign(const std::function<void(T&)>& f)
+    {
+        traversal_assign_act<sizeof...(Types) - 1,
+                                std::tuple<Types...>&,
+                                    const std::function<void(T&)>&>::act(tpl_, f);
+    }
+    template<size_t N, typename Tp, typename F>
+    struct traversal_op_act
+    {
+        static void act(Tp& tpl_, F& f)
+        {
+            auto el = std::get<N>(tpl_);
+            f(el);
+            traversal_op_act<N-1, Tp, F>::act(tpl_, f);
+        }
+    };
+    template<typename Tp, typename F>
+    struct traversal_op_act<0, Tp, F>
+    {
+        static void act(Tp& tpl_, F& f)
+        {
+
+        }
+    };
+    template<typename F>
+    void traversal_op(const F& f) const
+    {
+        traversal_op_act<sizeof...(Types) - 1,
+                            std::tuple<Types...>&,
+                            F&>::act((std::tuple<Types...>&)tpl_, (F&)f);
+    }
+    template<typename T>
+    multievent operator, (const std::function<void(T&)>& f)
+    {
+        traversal_assign<sizeof...(Types) - 1>(f);
+    }
+    std::tuple<Types...> tpl_;
+};
+class multievent_begin
+{
+public:
+    template<typename T>
+    multievent<multievent_begin, T> operator , (const T& t)
+    {
+        return multievent<multievent_begin, T>(*this, t);
+    }
+};
+
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmultichar"
 typedef onevent<wxKeyEvent, 'kyup'>  Fonkeyup; Fonkeyup onkeyup;
 typedef onevent<wxKeyEvent, 'kydn'>  Fonkeydown; Fonkeydown onkeydown;
+typedef onevent<wxKeyEvent, 'char'>  Fonchar; Fonchar onchar;
 typedef onevent<wxCommandEvent, 'clck'> Fonclick; Fonclick onclick;
+typedef onevent<wxCommandEvent, 'text'> Fontext; Fontext ontext;
 typedef onevent<wxDropFilesEvent, 'drpf'> Fondropfiles; Fondropfiles ondropfiles;
 typedef onevent<wxCommandEvent, 'choc'> Fonchoice; Fonchoice onchoice;
+typedef onevent<wxPaintEvent, 'pain'> Fonpaint; Fonpaint onpaint;
+typedef onevent<wxScrollEvent, 'trck'> Fonthumbtrack; Fonthumbtrack onthumbtrack;
+typedef onevent<wxScrollEvent, 'slup'> Fonscrollup; Fonscrollup onscrollup;
+typedef onevent<wxScrollEvent, 'sldn'> Fonscrolldown; Fonscrolldown onscrolldown;
+typedef onevent<wxScrollEvent, 'chng'> Fonscrollchanged; Fonscrollchanged onscrollchanged;
 #pragma GCC diagnostic pop
-
-
 
 
 class layout_end {};
@@ -76,6 +194,7 @@ public:
     prop_builder_itf() :
         sf_(0), deferred_(false) {}
     virtual ~prop_builder_itf() {}
+    virtual wxObject* get_prop() = 0;
     virtual void operator ()(wxSizerFlags) = 0;
     virtual void operator ()(wxSizer*) = 0;
     virtual void operator ()(long) = 0;
@@ -88,9 +207,17 @@ public:
     // wxWindoow
     virtual void operator ()(const Fonkeyup&) = 0;
     virtual void operator ()(const Fonkeydown&) = 0;
+    virtual void operator ()(const Fonchar&) = 0;
     virtual void operator ()(const Fonclick&) = 0;
+    virtual void operator ()(const Fontext&) = 0;
     virtual void operator ()(const Fondropfiles&) = 0;
     virtual void operator ()(const Fonchoice&) = 0;
+    virtual void operator ()(const Fonpaint&) = 0;
+    virtual void operator ()(const Fonthumbtrack&) = 0;
+    virtual void operator ()(const Fonscrollup&) = 0;
+    virtual void operator ()(const Fonscrolldown&) = 0;
+    virtual void operator ()(const Fonscrollchanged&) = 0;
+
     // wxSizer
     wxSizerFlags sf_;
     bool deferred_;
@@ -106,13 +233,20 @@ public:
     NO_IMPL(long)
     NO_IMPL(const Fonkeyup&)
     NO_IMPL(const Fonkeydown&)
+    NO_IMPL(const Fonchar&)
     NO_IMPL(const Fonclick&)
+    NO_IMPL(const Fontext&)
     NO_IMPL(const Fondropfiles&)
     NO_IMPL(const Fonchoice&)
+    NO_IMPL(const Fonpaint&)
     NO_IMPL(const wxArrayString&)
     NO_IMPL(const wxString&)
     NO_IMPL(const wxPoint&)
     NO_IMPL(const wxSize&)
+    NO_IMPL(const Fonthumbtrack&)
+    NO_IMPL(const Fonscrollup&)
+    NO_IMPL(const Fonscrolldown&)
+    NO_IMPL(const Fonscrollchanged&)
 };
 
 template<class T>
@@ -120,6 +254,10 @@ class prop_builder_base : public no_impl_prop_builder_base
 {
 public:
     prop_builder_base(T* t) : t_(t) {}
+    virtual wxObject* get_prop()
+    {
+        return t_;
+    }
     virtual void operator ()(wxSizer* s)
     {
         if (!deferred_)
@@ -130,14 +268,20 @@ public:
         else
             s->Add(t_, sf_);
     }
-    virtual void operator ()(const Fonkeyup& f)
-    {
-        t_->Bind(wxEVT_KEY_UP, f.functor_);
+#define TEMPLATE_ACT_ONEVENT_BIND(E, F) \
+    virtual void operator ()(const F& f) \
+    {   \
+        t_->Bind(E, f.functor_); \
     }
-    virtual void operator ()(const Fonkeydown& f)
-    {
-        t_->Bind(wxEVT_KEY_DOWN, f.functor_);
-    }
+    TEMPLATE_ACT_ONEVENT_BIND(wxEVT_KEY_UP, Fonkeyup)
+    TEMPLATE_ACT_ONEVENT_BIND(wxEVT_KEY_DOWN, Fonkeydown)
+    TEMPLATE_ACT_ONEVENT_BIND(wxEVT_CHAR, Fonchar)
+    TEMPLATE_ACT_ONEVENT_BIND(wxEVT_PAINT, Fonpaint)
+    TEMPLATE_ACT_ONEVENT_BIND(wxEVT_SCROLL_THUMBTRACK, Fonthumbtrack)
+    TEMPLATE_ACT_ONEVENT_BIND(wxEVT_SCROLL_LINEUP, Fonscrollup)
+    TEMPLATE_ACT_ONEVENT_BIND(wxEVT_SCROLL_LINEDOWN, Fonscrolldown)
+    TEMPLATE_ACT_ONEVENT_BIND(wxEVT_SCROLL_CHANGED, Fonscrollchanged)
+#undef TEMPLATE_ACT_ONEVENT_BIND
     virtual void operator ()(const wxString& value)
     {
         wxTextEntry* te = NULL;
@@ -163,6 +307,10 @@ class prop_builder_base<wxSizer> : public no_impl_prop_builder_base
 {
 public:
     prop_builder_base(wxSizer* t) : t_(t) {}
+    virtual wxObject* get_prop()
+    {
+        return t_;
+    }
     virtual void operator ()(wxSizer* s)
     {
         if (!deferred_)
@@ -203,6 +351,10 @@ public:
     {
         t_->DragAcceptFiles(true);
         t_->Bind(wxEVT_DROP_FILES, f.functor_);
+    }
+    virtual void operator ()(const Fontext& f)
+    {
+        t_->Bind(wxEVT_TEXT, f.functor_, t_->GetId());
     }
     virtual void operator ()(long style)
     {
@@ -271,32 +423,51 @@ public:
 
     builder& operator [] (long style)
     {
-        (*prop_)(style);
+        if (prop_)
+            (*prop_)(style);
         return *this;
     }
 
     builder& operator [] (const wxArrayString& items)
     {
-        (*prop_)(items);
+        if (prop_)
+            (*prop_)(items);
+        return *this;
+    }
+
+    template<typename Y>
+    builder& operator [] (const std::function<void(Y*)>& onload)
+    {
+        wxObject* o = NULL;
+        if (prop_)
+            o = prop_->get_prop();
+        Y* y = dynamic_cast<Y*>(o);
+        if (!y)
+            y = dynamic_cast<Y*>(t_);
+        if (y)
+            onload(y);
         return *this;
     }
 
     builder& operator [] (const Fonclick& f)
     {
-        (*prop_)(f);
+        if (prop_)
+            (*prop_)(f);
         return *this;
     }
 
     builder& operator [] (const Fondropfiles& f)
     {
-        (*prop_)(f);
+        if (prop_)
+            (*prop_)(f);
         return *this;
     }
 
     template<typename Functor>
     builder& operator [] (const Functor& f)
     {
-        (*prop_)(f);
+        if (prop_)
+            (*prop_)(f);
         return *this;
     }
 
@@ -306,6 +477,14 @@ public:
             (*prop_)(sf);
         else
             sf_ = sf;
+        return *this;
+    }
+
+    template<typename ... Types>
+    builder& operator [] (const multievent<multievent_begin, Types...>& me)
+    {
+        if (prop_)
+            me.traversal_op(*prop_);
         return *this;
     }
 
@@ -522,11 +701,13 @@ class layout
 {
 public:
     static layout_end end;
+    static lambda_transfer onload;
     static std::function<void(wxSizer*)> oncomplete;
     template<class T>
     static builder<T>& begin(T* t) { return * new builder<T>(t);  }
 };
 layout_end layout::end;
+lambda_transfer layout::onload;
 std::function<void(wxSizer*)> layout::oncomplete;
 
 #define EMPTY_ARGS wxEmptyString, wxDefaultPosition, wxDefaultSize
