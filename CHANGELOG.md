@@ -2,7 +2,7 @@
 
 1. a solution from zqt_helper, which solve lambda to be deduced.
 
-2. add many event handler once a time, and assign them to a same functor.
+2. add many event handlers once a time, and assign them to the same functor.
 ```
   [multievent(),
     onscrollup,
