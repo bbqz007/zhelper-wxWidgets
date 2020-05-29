@@ -1,3 +1,18 @@
+2020 05/29
+
+1. a solution from zqt_helper, which solve lambda to be deduced.
+
+2. add many event handler once a time, and assign them to a same functor.
+```
+  [multievent(),
+    onscrollup,
+    onscrolldown,
+    onscrollchange = 
+    [](wxScrollEvent&) {
+    
+    }]
+```
+
 2020 05/15
 new features:
 1. easy way to write wxListCtrl headers (columns)
