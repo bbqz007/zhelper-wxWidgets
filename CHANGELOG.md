@@ -13,6 +13,14 @@
     }]
 ```
 
+3. add onload callback. you can assign a functor to onload, where you can do some settings to widget via api.
+```
+  (new Button)
+  [ onload = [](wxButton* btn) {
+      // call methods of wxButton to do settings.
+  }]
+```
+
 2020 05/15
 new features:
 1. easy way to write wxListCtrl headers (columns)
