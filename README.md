@@ -1,7 +1,7 @@
 # zhelper-wxWidgets
 a helper header help you easy to program gui app on wxWidgets 3.x
 
-you can easily write menus like this
+### you can easily write menus like this
 ```
 Frame* frame = new Frame;
 Delegate* delegate = new Delegate(frame);
@@ -28,7 +28,7 @@ menu::begin(new MenuBar)
         });
 ```
 
-you can easily write windows like this as well:
+### you can easily write windows like this as well:
 ```
 Frame* frame = new Frame;
 layout::begin(new layout)
@@ -63,7 +63,7 @@ layout::begin(new layout)
          frame->SetLayout(layout);
      });
 ```
-just easy like writing a html
+### just easy like writing a html
 ```
 <div id='0'>
     <div id='1'>
@@ -81,21 +81,21 @@ just easy like writing a html
 </div>
 ```
 
-how to use?
+## how to use?
 
 just include the header and use c++11.
 
-how to write layouts?
+## how to write layouts?
 
-1.begin with calling layout::begin(somelayout)
+* 1. begin with calling layout::begin(somelayout)
 
-2.add elements(layout or widget) to layout, by calling operator () (widget)
+* 2. add elements(layout or widget) to layout, by calling operator () (widget)
 
-3.configure your latest added elements, by calling operator [] (prop)
+* 3. configure your latest added elements, by calling operator [] (prop)
 
-4.end with calling operator () (layout::end)
+* 4. end with calling operator () (layout::end)
 
-just like 
+### just like 
 ```
 layout::begin(somelayout)   // begin to write a layout
     [prop]              // configure layout properties of somelayout
@@ -106,15 +106,15 @@ layout::begin(somelayout)   // begin to write a layout
     (layout::end)           // end up writing a layout
 ```
 
-new features for programming with wxListCtrl
+## new features for programming with wxListCtrl
 
-you do not need to fill things into item then insert and lots of code, 
+* you do not need to fill things into item then insert and lots of code, 
 
-you do not need to know about the interfaces of wxListCtrl.
+* you do not need to know about the interfaces of wxListCtrl.
 
-you just need to write () and \[ ].
+* you just need to write () and \[ ].
 
-1. easy way to write wxListCtrl headers (columns)
+#### 1. easy way to write wxListCtrl headers (columns)
 ```
 wxListCtrl* p = new wxListCtrl;
 using namespace zhelper::wxWidgets::listctrlhlp;
@@ -124,7 +124,7 @@ column::begin(p)
   (column::end)
 ```
 
-2. easy way to append rows into wxListCtrl
+#### 2. easy way to append rows into wxListCtrl
 ```
 row::begin(p)
   ("row 1_col 1") [ font ] [ color ]
@@ -135,7 +135,7 @@ row::begin(p)
   (row::end)
 ```
 
-3. easy way to modify cell of wxListCtrl
+#### 3. easy way to modify cell of wxListCtrl
 ```
 cell::begin(p)
   (1, 1)    // row 2 , col 2
