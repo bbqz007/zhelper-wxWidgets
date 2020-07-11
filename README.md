@@ -87,13 +87,13 @@ just include the header and use c++11.
 
 ## how to write layouts?
 
-* 1. begin with calling layout::begin(somelayout)
+* 1. begin with calling **layout::begin**(somelayout)
 
-* 2. add elements(layout or widget) to layout, by calling operator () (widget)
+* 2. add elements(layout or widget) to layout, by calling **operator ()** (widget)
 
-* 3. configure your latest added elements, by calling operator [] (prop)
+* 3. configure your latest added elements, by calling **operator []** (prop)
 
-* 4. end with calling operator () (layout::end)
+* 4. end with calling operator () **(layout::end)**
 
 ### just like 
 ```c++
