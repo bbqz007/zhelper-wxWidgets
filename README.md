@@ -2,7 +2,7 @@
 a helper header help you easy to program gui app on wxWidgets 3.x
 
 ### you can easily write menus like this
-```
+```c++
 Frame* frame = new Frame;
 Delegate* delegate = new Delegate(frame);
 menu::begin(new MenuBar)
@@ -29,7 +29,7 @@ menu::begin(new MenuBar)
 ```
 
 ### you can easily write windows like this as well:
-```
+```c++
 Frame* frame = new Frame;
 layout::begin(new layout)
     (layout::begin(new layout)
@@ -64,7 +64,7 @@ layout::begin(new layout)
      });
 ```
 ### just easy like writing a html
-```
+```html
 <div id='0'>
     <div id='1'>
         <input type="button" onclick="handler()">
@@ -96,7 +96,7 @@ just include the header and use c++11.
 * 4. end with calling operator () (layout::end)
 
 ### just like 
-```
+```c++
 layout::begin(somelayout)   // begin to write a layout
     [prop]              // configure layout properties of somelayout
     (new element)           // add a element to somelayout
@@ -108,14 +108,14 @@ layout::begin(somelayout)   // begin to write a layout
 
 ## new features for programming with wxListCtrl
 
-* you do not need to fill things into item then insert and lots of code, 
+* you do **not** need to fill things into item then insert and lots of code, 
 
-* you do not need to know about the interfaces of wxListCtrl.
+* you do **not** need to know about the interfaces of wxListCtrl.
 
-* you just need to write () and \[ ].
+* you **just** need to write () and \[ ].
 
 #### 1. easy way to write wxListCtrl headers (columns)
-```
+```c++
 wxListCtrl* p = new wxListCtrl;
 using namespace zhelper::wxWidgets::listctrlhlp;
 column::begin(p)
@@ -125,7 +125,7 @@ column::begin(p)
 ```
 
 #### 2. easy way to append rows into wxListCtrl
-```
+```c++
 row::begin(p)
   ("row 1_col 1") [ font ] [ color ]
   ("row 1_col 2") [ font ] [ color ]
@@ -136,7 +136,7 @@ row::begin(p)
 ```
 
 #### 3. easy way to modify cell of wxListCtrl
-```
+```c++
 cell::begin(p)
   (1, 1)    // row 2 , col 2
     [ "change value" ] [ change_font ] [ change_color ]
