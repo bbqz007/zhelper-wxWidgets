@@ -56,16 +56,55 @@ public:
     std::function<void(T&)> functor_;
 };
 
+#if __cplusplus < 201402L
+template<typename F>
+struct lambda_transfer_deduce
+{
+	lambda_transfer_deduce(const F& f) : f_(f)
+	{
+
+	}
+	template<typename F, typename T, typename Y>
+	T* operator () (const F& f, void(F::*)(T*) const, Y* y) const
+	{
+		return dynamic_cast<T*>(y);
+	}
+	template<typename F, typename T, typename X, typename Y>
+	void operator () (const F& f, void(F::*)(T*) const, X* x, Y* y) const
+	{
+		T* t = this->operator()(f_, &F::operator(), x);
+		if (!t)
+			t = this->operator()(f_, &F::operator(), y);
+		if (t)
+			f_(t);
+	}
+	template<typename X, typename Y>
+	void operator () (X* x, Y* y) const
+	{
+		this->operator()(f_, &F::operator(), x, y);
+	}
+	F f_;
+};
+#endif 
+
 class lambda_transfer
 {
 public:
     // thanks to a solution of deduce types of arguments and result of lambda to make std::function
     //   by https://stackoverflow.com/questions/21245891/deduce-template-argument-when-lambda-passed-in-as-a-parameter
+#if __cplusplus >= 201402L
     template<typename F>
     auto operator , (const F& f)
     {
         return operator ()(f, &F::operator());
     }
+#else
+	template<typename F>
+	lambda_transfer_deduce<F> operator , (const F& f)
+	{
+		return lambda_transfer_deduce<F>(f);
+	}
+#endif
 private:
     template<typename F, typename T>
     std::function<void(T*)> operator () (const F& f, void(F::*)(T*) const)
@@ -181,11 +220,14 @@ typedef onevent<wxScrollEvent, 'trck'> Fonthumbtrack; Fonthumbtrack onthumbtrack
 typedef onevent<wxScrollEvent, 'slup'> Fonscrollup; Fonscrollup onscrollup;
 typedef onevent<wxScrollEvent, 'sldn'> Fonscrolldown; Fonscrolldown onscrolldown;
 typedef onevent<wxScrollEvent, 'chng'> Fonscrollchanged; Fonscrollchanged onscrollchanged;
+typedef onevent<wxListEvent, 'lact'> Fonlistactivated; Fonlistactivated onlistactivated;
+
 #pragma GCC diagnostic pop
 
 
 class layout_end {};
 class menu_end {};
+class layout_stretch_spacer {};
 
 #define NO_IMPL(F) virtual void operator ()(F) {}
 class prop_builder_itf
@@ -217,6 +259,9 @@ public:
     virtual void operator ()(const Fonscrollup&) = 0;
     virtual void operator ()(const Fonscrolldown&) = 0;
     virtual void operator ()(const Fonscrollchanged&) = 0;
+    virtual void operator ()(const Fonlistactivated&) = 0;
+    // wxTextCtrl
+    virtual void operator ()(const wxValidator&) = 0;
 
     // wxSizer
     wxSizerFlags sf_;
@@ -247,6 +292,8 @@ public:
     NO_IMPL(const Fonscrollup&)
     NO_IMPL(const Fonscrolldown&)
     NO_IMPL(const Fonscrollchanged&)
+    NO_IMPL(const Fonlistactivated&)
+    NO_IMPL(const wxValidator&)
 };
 
 template<class T>
@@ -360,6 +407,10 @@ public:
     {
         t_->SetWindowStyleFlag(style);
     }
+    virtual void operator ()(const wxValidator& validator)
+    {
+        t_->SetValidator(validator);
+    }
 };
 
 template<>
@@ -374,6 +425,17 @@ public:
     virtual void operator ()(const wxArrayString& items)
     {
         t_->Set(items);
+    }
+};
+
+template<>
+class prop_builder<wxListCtrl> : public prop_builder_base<wxListCtrl>
+{
+public:
+    prop_builder(wxListCtrl* t) : prop_builder_base<wxListCtrl>(t) {}
+    virtual void operator ()(const Fonlistactivated& f)
+    {
+        t_->Bind(wxEVT_LIST_ITEM_ACTIVATED, f.functor_);
     }
 };
 
@@ -421,6 +483,12 @@ public:
         return operator ()(y, y, flags);
     }
 
+    builder& operator () (layout_stretch_spacer&)
+    {
+        t_->AddStretchSpacer();
+        return *this;
+    }
+
     builder& operator [] (long style)
     {
         if (prop_)
@@ -448,6 +516,18 @@ public:
             onload(y);
         return *this;
     }
+
+#if __cplusplus < 201402L
+	template<typename F>
+	builder& operator [] (const lambda_transfer_deduce<F>& onload)
+	{
+		wxObject* o = NULL;
+		if (prop_)
+			o = prop_->get_prop();
+		onload(o, t_);
+		return *this;
+	}
+#endif 
 
     builder& operator [] (const Fonclick& f)
     {
@@ -703,12 +783,14 @@ public:
     static layout_end end;
     static lambda_transfer onload;
     static std::function<void(wxSizer*)> oncomplete;
+    static layout_stretch_spacer stretch_spacer;
     template<class T>
     static builder<T>& begin(T* t) { return * new builder<T>(t);  }
 };
 layout_end layout::end;
 lambda_transfer layout::onload;
 std::function<void(wxSizer*)> layout::oncomplete;
+layout_stretch_spacer layout::stretch_spacer;
 
 #define EMPTY_ARGS wxEmptyString, wxDefaultPosition, wxDefaultSize
 
@@ -776,12 +858,14 @@ public:
     }
     wxListItem operator ()(cell_end&)
     {
+        modify_if_needed();
         wxListItem ret = info_;
         delete this;
         return ret;
     }
     wxListItem operator ()(cell_another&)
     {
+        modify_if_needed();
         wxListItem ret = info_;
         info_.Clear();
         return ret;
@@ -984,7 +1068,41 @@ void row_builder::finish_prev_cell()
 }
 
 
-}
+} // end namespace listctlhlp
+
+struct widgets_enable_protector
+{
+    ~widgets_enable_protector()
+    {
+        release();
+    };
+    template<typename ... Ty>
+    widgets_enable_protector(Ty... args)
+    {
+        this->operator() (args...);
+    }
+    widgets_enable_protector(const widgets_enable_protector& other)
+    {
+        widgets_ =  std::move(other.widgets_);
+    }
+    void operator ()(wxWindow* wid)
+    {
+        wid->Disable();
+        widgets_.push_back(wid);
+    }
+    template<typename ... Ty>
+    void operator ()(wxWindow* wid, Ty... args)
+    {
+        this->operator()(wid);
+        this->operator()(args...);
+    }
+    void release()
+    {
+        std::for_each(std::begin(widgets_), std::end(widgets_),
+                      [](wxWindow* w){ w->Enable(); });
+    }
+    std::vector<wxWindow*> widgets_;
+};
 
 } // end namespace wxWidgets
 
